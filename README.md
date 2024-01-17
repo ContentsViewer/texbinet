@@ -1,13 +1,15 @@
 # texbinet
 
-> **NOTE📝:** 現在、開発中です。
+English | [日本語](./README_jp.md)
 
-`texbinet`は、特定のフォルダ化にあるあらゆるファイル(pdf, audio, image)をテキスト化するデーモンアプリです。
+> **NOTE📝:** Currently under development.
 
-テキストファイルはあらゆるツールで使われている共通のフォーマットです。
-VS Codeはフォルダ下のファイルをテキストによって全検索できます。
-Linux系では`grep`コマンドで検索できます。
-最近では、チャットベースAIが注目されており、ユーザデータを学習に使うことができますが、多くの場合テキストファイルが対象になります。
+`texbinet` is a daemon application that converts non-text document files (pdf, PowerPoint, Word, Excel, images) in a specific folder into text.
 
-`texbinet`は、指定されたフォルダ下にあるテキストでないファイルをテキスト化します。
-テキスト化されることで、テキストベースのツールで検索できるようになります。
+Text files are a common format used in various tools.
+VS Code can perform a full search of files in a folder based on text.
+In Linux, you can search using the `grep` command.
+Recently, chat-based AI has been attracting attention, and user data can be used for learning, but in many cases, text files are the target.
+
+`texbinet` converts non-text files in the specified folder into text.
+By being converted into text, they can be searched with text-based tools.
