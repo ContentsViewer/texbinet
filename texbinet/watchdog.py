@@ -6,7 +6,7 @@ from pathlib import Path
 import watchdog.events
 import watchdog.observers
 
-from .converters import pdf2text
+from .converters import pdf2text, image2text
 
 EVENT_TYPE_WATCHDOG_STOP = "watchdog_stop"
 EVENT_TYPE_FILE_SYNC = "file_sync"
@@ -111,6 +111,7 @@ class Watchdog:
 
         self._converters = {
             ".pdf": pdf2text,
+            ".jpg": image2text,
         }
 
         self._event_handler = self.FileSystemEventHandler(self)

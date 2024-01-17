@@ -10,6 +10,10 @@ watchdog = "*"
 pypdf = "*"
 easyocr = "*"
 pdf2image = "*"
+torch = "*"
+transformers = "*"
+pillow = "*"
+accelerate = "*"
 
 [dev-packages]
 
