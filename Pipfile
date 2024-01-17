@@ -7,6 +7,9 @@ name = "pypi"
 fastapi = "*"
 uvicorn = {extras = ["standard"], version = "*"}
 watchdog = "*"
+pypdf = "*"
+easyocr = "*"
+pdf2image = "*"
 
 [dev-packages]
 

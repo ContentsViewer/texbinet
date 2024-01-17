@@ -1,9 +1,12 @@
 import os
 from threading import Thread
 import queue
+from pathlib import Path
 
 import watchdog.events
 import watchdog.observers
+
+from .converters import pdf2text
 
 EVENT_TYPE_WATCHDOG_STOP = "watchdog_stop"
 EVENT_TYPE_FILE_SYNC = "file_sync"
@@ -24,60 +27,60 @@ class WatchdogStopEvent(Event):
 class FileSyncEvent(Event):
     event_type = EVENT_TYPE_FILE_SYNC
 
-    def __init__(self, path: str):
+    def __init__(self, path: Path):
         self._path = path
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         return self._path
 
 
 class FileCreatedEvent(Event):
     event_type = EVENT_TYPE_FILE_CREATED
 
-    def __init__(self, path):
+    def __init__(self, path: Path):
         self._path = path
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         return self._path
 
 
 class FileModifiedEvent(Event):
     event_type = EVENT_TYPE_FILE_MODIFIED
 
-    def __init__(self, path: str):
+    def __init__(self, path: Path):
         self._path = path
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         return self._path
 
 
 class FileDeletedEvent(Event):
     event_type = EVENT_TYPE_FILE_DELETED
 
-    def __init__(self, path: str):
+    def __init__(self, path: Path):
         self._path = path
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         return self._path
 
 
 class FileMovedEvent(Event):
     event_type = EVENT_TYPE_FILE_MOVED
 
-    def __init__(self, src_path: str, dest_path: str):
+    def __init__(self, src_path: Path, dest_path: Path):
         self._src_path = src_path
         self._dest_path = dest_path
 
     @property
-    def src_path(self) -> str:
+    def src_path(self) -> Path:
         return self._src_path
 
     @property
-    def dest_path(self) -> str:
+    def dest_path(self) -> Path:
         return self._dest_path
 
 
@@ -88,21 +91,27 @@ class Watchdog:
             self._parent = parent
 
         def on_modified(self, event):
-            self._parent._queue.put(FileModifiedEvent(event.src_path))
+            self._parent._queue.put(FileModifiedEvent(Path(event.src_path)))
 
         def on_created(self, event):
-            self._parent._queue.put(FileCreatedEvent(event.src_path))
+            self._parent._queue.put(FileCreatedEvent(Path(event.src_path)))
 
         def on_deleted(self, event):
-            self._parent._queue.put(FileDeletedEvent(event.src_path))
+            self._parent._queue.put(FileDeletedEvent(Path(event.src_path)))
 
         def on_moved(self, event):
-            self._parent._queue.put(FileMovedEvent(event.src_path, event.dest_path))
+            self._parent._queue.put(
+                FileMovedEvent(Path(event.src_path), Path(event.dest_path))
+            )
 
     def __init__(self, path="./tests"):
         self._running = True
         self._path = path
         self._queue = queue.Queue()
+
+        self._converters = {
+            ".pdf": pdf2text,
+        }
 
         self._event_handler = self.FileSystemEventHandler(self)
         self._observer = watchdog.observers.Observer()
@@ -132,7 +141,8 @@ class Watchdog:
 
         for root, _, files in os.walk(self._path):
             for file in files:
-                self._queue.put(FileSyncEvent(os.path.join(root, file)))
+                path = Path(root) / file
+                self._queue.put(FileSyncEvent(path))
 
         while self._running:
             event: Event = self._queue.get()
@@ -143,6 +153,16 @@ class Watchdog:
 
     def _on_file_sync(self, event: FileSyncEvent):
         print(f"sync file {event.path}")
+
+        cabitext_path = Path(str(event.path) + ".cabi.txt")
+        if cabitext_path.exists() and cabitext_path.stat().st_mtime > event.path.stat().st_mtime:
+            return
+
+        try:
+            text = self._converters[event.path.suffix.lower()](event.path)
+            cabitext_path.write_text(text, encoding="utf-8")
+        except KeyError:
+            None
 
     def _on_file_modified(self, event: FileModifiedEvent):
         print(f"file has been modified {event.path}")
