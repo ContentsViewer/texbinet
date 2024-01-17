@@ -2,11 +2,12 @@ import os
 from threading import Thread
 import queue
 from pathlib import Path
+import logging
 
 import watchdog.events
 import watchdog.observers
 
-from .converters import pdf2text, image2text, pptx2text
+from .converters import pdf2text, image2text, pptx2text, docx2text
 
 EVENT_TYPE_WATCHDOG_STOP = "watchdog_stop"
 EVENT_TYPE_FILE_SYNC = "file_sync"
@@ -113,7 +114,9 @@ class Watchdog:
             ".pdf": pdf2text,
             ".jpg": image2text,
             ".pptx": pptx2text,
+            ".docx": docx2text,
         }
+        self._logger = logging.getLogger(__name__)
 
         self._event_handler = self.FileSystemEventHandler(self)
         self._observer = watchdog.observers.Observer()
@@ -154,17 +157,22 @@ class Watchdog:
         self._running = False
 
     def _on_file_sync(self, event: FileSyncEvent):
-        print(f"sync file {event.path}")
-
         cabitext_path = Path(str(event.path) + ".cabi.txt")
-        if cabitext_path.exists() and cabitext_path.stat().st_mtime > event.path.stat().st_mtime:
+        if (
+            cabitext_path.exists()
+            and cabitext_path.stat().st_mtime > event.path.stat().st_mtime
+        ):
             return
 
-        try:
-            text = self._converters[event.path.suffix.lower()](event.path)
-            cabitext_path.write_text(text, encoding="utf-8")
-        except KeyError:
-            None
+        suffix = event.path.suffix.lower()
+
+        if suffix not in self._converters:
+            return
+
+        self._logger.info(f"converting {event.path} to {cabitext_path}")
+
+        text = self._converters[suffix](event.path)
+        cabitext_path.write_text(text, encoding="utf-8")
 
     def _on_file_modified(self, event: FileModifiedEvent):
         print(f"file has been modified {event.path}")

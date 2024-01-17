@@ -15,6 +15,7 @@ transformers = "*"
 pillow = "*"
 accelerate = "*"
 python-pptx = "*"
+python-docx = "*"
 
 [dev-packages]
 
