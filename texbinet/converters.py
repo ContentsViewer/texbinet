@@ -61,3 +61,41 @@ def image2text(path: Path) -> str:
     # generated_text = processor.decode(generated_ids[0], skip_special_tokens=True).strip()
     # print(generated_text)
     # return generated_text
+
+
+def pptx2text(path: Path) -> str:
+    """Convert a PPTX file to text."""
+
+    import pptx
+    from typing import List
+
+    def extract_table_text(table) -> List[str]:
+        """Extract text from table shape in PPTX."""
+        texts = []
+        for row in table.rows:
+            row_text = []
+            for cell in row.cells:
+                cell_text = "".join(
+                    run.text
+                    for paragraph in cell.text_frame.paragraphs
+                    for run in paragraph.runs
+                )
+                row_text.append(cell_text.replace("\n", ""))
+            texts.append(", ".join(row_text))
+        return texts
+
+    prs = pptx.Presentation(path)
+
+    texts = []
+
+    for i, slide in enumerate(prs.slides, start=1):
+        texts.append(f"--- Page {i} ---")
+
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                texts.append(shape.text.replace("\n", ""))
+
+            if shape.has_table:
+                texts.extend(extract_table_text(shape.table))
+
+    return "\n".join(texts)
