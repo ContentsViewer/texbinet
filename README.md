@@ -4,7 +4,7 @@ English | [日本語](./README_jp.md)
 
 > **NOTE📝:** Currently under development.
 
-`texbinet` is a daemon application that converts non-text document files (pdf, PowerPoint, Word, Excel, images) in a specific folder into text.
+`texbinet` (`text` + `cabinet`) is a daemon application that converts non-text document files (pdf, PowerPoint, Word, Excel, images) in a specific folder into text.
 
 Text files are a common format used in various tools.
 VS Code can perform a full search of files in a folder based on text.

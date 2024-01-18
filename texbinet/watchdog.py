@@ -125,6 +125,7 @@ class Watchdog:
         self._converters = {
             ".pdf": pdf2text,
             ".jpg": image2text,
+            ".png": image2text,
             ".pptx": pptx2text,
             ".docx": docx2text,
             ".xlsx": xlsx2text,

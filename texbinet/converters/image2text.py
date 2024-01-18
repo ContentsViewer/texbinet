@@ -1,14 +1,21 @@
 from pathlib import Path
 
-import easyocr
+import pyocr
+from PIL import Image
 
 
 def image2text(path: Path) -> str:
     """Convert an image file to text."""
 
-    reader = easyocr.Reader(["en", "ja"])
-    texts = reader.readtext(str(path))
+    tools = pyocr.get_available_tools()
+    if len(tools) == 0:
+        raise RuntimeError("No OCR tool found")
 
-    text = "\n".join([text for _, text, accuracy in texts if accuracy > 0.5])
+    tool = tools[0]
+    image = Image.open(str(path))
+
+    text = tool.image_to_string(
+        image, lang="jpn+eng", builder=pyocr.builders.TextBuilder()
+    )
 
     return text
