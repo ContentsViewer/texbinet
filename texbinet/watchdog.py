@@ -190,18 +190,28 @@ class Watchdog:
         suffix = path.suffix.lower()
         return self._converters.get(suffix)
 
+    def _is_cabitext_up_to_date(self, cabitext_path: Path, original_path: Path) -> bool:
+        return (
+            cabitext_path.exists()
+            and cabitext_path.stat().st_mtime > original_path.stat().st_mtime
+        )
+
     def _on_watchdog_stop(self, event: WatchdogStopEvent):
         self._running = False
 
     def _on_file_sync(self, event: FileSyncEvent):
+        def handle_cabitext_file(path: Path):
+            original_path = Path(str(path)[: -len(".cabi.txt")])
+            if not original_path.exists():
+                self._logger.info(f"Deleted {event.path}")
+                event.path.unlink()
+
         if self._is_cabitext_file(event.path):
+            handle_cabitext_file(event.path)
             return
 
         cabitext_path = self._get_cabitext_path(event.path)
-        if (
-            cabitext_path.exists()
-            and cabitext_path.stat().st_mtime > event.path.stat().st_mtime
-        ):
+        if self._is_cabitext_up_to_date(cabitext_path, event.path):
             return
 
         converter = self._get_converter_for_file(event.path)
@@ -218,6 +228,8 @@ class Watchdog:
             return
 
         cabitext_path = self._get_cabitext_path(event.path)
+        if self._is_cabitext_up_to_date(cabitext_path, event.path):
+            return
 
         converter = self._get_converter_for_file(event.path)
         if converter is None:
