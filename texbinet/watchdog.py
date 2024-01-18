@@ -1,4 +1,6 @@
 import os
+import sys
+import shutil
 from threading import Thread
 import queue
 from pathlib import Path
@@ -116,7 +118,12 @@ class Watchdog:
             ".pptx": pptx2text,
             ".docx": docx2text,
         }
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(f"watchdog({path.replace('.', '_')})")
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        self._logger.addHandler(handler)
+        self._logger.setLevel(logging.INFO)
 
         self._event_handler = self.FileSystemEventHandler(self)
         self._observer = watchdog.observers.Observer()
@@ -151,37 +158,97 @@ class Watchdog:
 
         while self._running:
             event: Event = self._queue.get()
-            event_handlers[event.event_type](event)
+            try:
+                event_handlers[event.event_type](event)
+            except Exception as e:
+                self._logger.error(
+                    f"Exception in event handling ({event.event_type}):\n{e}"
+                )
+
+    def _get_cabitext_path(self, path: Path) -> Path:
+        return Path(str(path) + ".cabi.txt")
+
+    def _is_cabitext_file(self, path: Path) -> bool:
+        return (
+            path.suffixes[-2:] == [".cabi", ".txt"]
+            if len(path.suffixes) >= 2
+            else False
+        )
+
+    def _get_converter_for_file(self, path: Path):
+        suffix = path.suffix.lower()
+        return self._converters.get(suffix)
 
     def _on_watchdog_stop(self, event: WatchdogStopEvent):
         self._running = False
 
     def _on_file_sync(self, event: FileSyncEvent):
-        cabitext_path = Path(str(event.path) + ".cabi.txt")
+        if self._is_cabitext_file(event.path):
+            return
+
+        cabitext_path = self._get_cabitext_path(event.path)
         if (
             cabitext_path.exists()
             and cabitext_path.stat().st_mtime > event.path.stat().st_mtime
         ):
             return
 
-        suffix = event.path.suffix.lower()
-
-        if suffix not in self._converters:
+        converter = self._get_converter_for_file(event.path)
+        if converter is None:
             return
 
-        self._logger.info(f"converting {event.path} to {cabitext_path}")
+        self._logger.info(f"Converting {event.path} to {cabitext_path}")
 
-        text = self._converters[suffix](event.path)
+        text = converter(event.path)
         cabitext_path.write_text(text, encoding="utf-8")
 
     def _on_file_modified(self, event: FileModifiedEvent):
-        print(f"file has been modified {event.path}")
+        if self._is_cabitext_file(event.path):
+            return
+
+        cabitext_path = self._get_cabitext_path(event.path)
+
+        converter = self._get_converter_for_file(event.path)
+        if converter is None:
+            return
+
+        self._logger.info(f"Modified {event.path}, Converting to {cabitext_path}")
+
+        text = converter(event.path)
+        cabitext_path.write_text(text, encoding="utf-8")
 
     def _on_file_created(self, event: FileCreatedEvent):
-        print(f"file has been created {event.path}")
+        if self._is_cabitext_file(event.path):
+            return
+
+        converter = self._get_converter_for_file(event.path)
+        if converter is None:
+            return
+
+        cabitext_path = self._get_cabitext_path(event.path)
+        self._logger.info(f"Created {event.path}, Convert to {cabitext_path}")
+
+        text = converter(event.path)
+        cabitext_path.write_text(text, encoding="utf-8")
 
     def _on_file_deleted(self, event: FileDeletedEvent):
-        print(f"file has been deleted {event.path}")
+        if self._is_cabitext_file(event.path):
+            return
+
+        cabitext_path = self._get_cabitext_path(event.path)
+        if not cabitext_path.exists():
+            return
+
+        self._logger.info(f"Deleted {event.path}, Delete {cabitext_path}")
+        cabitext_path.unlink()
 
     def _on_file_moved(self, event: FileMovedEvent):
-        print(f"file has been moved/renamed from {event.src_path} to {event.dest_path}")
+        if self._is_cabitext_file(event.src_path):
+            return
+
+        cabitext_path = self._get_cabitext_path(event.src_path)
+        if not cabitext_path.exists():
+            return
+
+        self._logger.info(f"Moved {event.src_path}, Move {cabitext_path}")
+        shutil.move(str(cabitext_path), str(self._get_cabitext_path(event.dest_path)))
