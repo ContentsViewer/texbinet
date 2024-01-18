@@ -1,37 +1,50 @@
-from fastapi import FastAPI
-import uvicorn
 import argparse
+from pathlib import Path
+import time
+import sys
+import logging
 
 from texbinet.watchdog import Watchdog
 
-app = FastAPI()
 
+class Main:
+    def __init__(self, args):
+        self._target = Path(args.target)
+        self._logger = logging.getLogger("Main")
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        self._logger.addHandler(handler)
+        self._logger.setLevel(logging.INFO)
 
-@app.post("/watchdog")
-def post_watchdog():
-    return {"message": "Hello World"}
+    def run(self):
+        self._logger.info(f"Watching {self._target} for changes.")
+
+        running = True
+
+        watchdog = Watchdog(path=self._target)
+        while running:
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                running = False
+
+        self._logger.info("Stopping watchdog.")
+        watchdog.stop()
+        watchdog.join()
 
 
 if __name__ == "__main__":
-    watchdog = Watchdog()
-
     parser = argparse.ArgumentParser(
-        description="SSR host server",
+        description="texbinet daemon application.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+
     parser.add_argument(
-        "--host", type=str, default="127.0.0.1", help="Bind socket to this host."
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8000,
-        help="Bind socket to this port. If 0, an available port will be picked.",
+        "--target",
+        type=str,
+        required=True,
+        help="Path to the directory to watch for changes.",
     )
 
-    args = parser.parse_args()
-
-    uvicorn.run(app, host=args.host, port=args.port)
-
-    watchdog.stop()
-    watchdog.join()
+    Main(parser.parse_args()).run()

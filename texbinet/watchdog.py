@@ -9,7 +9,11 @@ import logging
 import watchdog.events
 import watchdog.observers
 
-from .converters import pdf2text, image2text, pptx2text, docx2text
+from .converters.pdf2text import pdf2text
+from .converters.image2text import image2text
+from .converters.pptx2text import pptx2text
+from .converters.docx2text import docx2text
+
 
 EVENT_TYPE_WATCHDOG_STOP = "watchdog_stop"
 EVENT_TYPE_FILE_SYNC = "file_sync"
@@ -107,7 +111,12 @@ class Watchdog:
                 FileMovedEvent(Path(event.src_path), Path(event.dest_path))
             )
 
-    def __init__(self, path="./tests"):
+    def __init__(self, path: Path):
+        if not path.exists():
+            raise ValueError(f"Path does not exist: {path}")
+        if not path.is_dir():
+            raise ValueError(f"Path is not a directory: {path}")
+
         self._running = True
         self._path = path
         self._queue = queue.Queue()
@@ -118,7 +127,7 @@ class Watchdog:
             ".pptx": pptx2text,
             ".docx": docx2text,
         }
-        self._logger = logging.getLogger(f"watchdog({path.replace('.', '_')})")
+        self._logger = logging.getLogger(f"watchdog({str(path).replace('.', '_')})")
         handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
