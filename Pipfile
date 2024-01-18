@@ -4,8 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-fastapi = "*"
-uvicorn = {extras = ["standard"], version = "*"}
 watchdog = "*"
 pypdf = "*"
 easyocr = "*"
@@ -13,6 +11,7 @@ pdf2image = "*"
 pillow = "*"
 python-pptx = "*"
 python-docx = "*"
+openpyxl = "*"
 
 [dev-packages]
 

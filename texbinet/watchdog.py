@@ -13,6 +13,7 @@ from .converters.pdf2text import pdf2text
 from .converters.image2text import image2text
 from .converters.pptx2text import pptx2text
 from .converters.docx2text import docx2text
+from .converters.xlsx2text import xlsx2text
 
 
 EVENT_TYPE_WATCHDOG_STOP = "watchdog_stop"
@@ -126,6 +127,7 @@ class Watchdog:
             ".jpg": image2text,
             ".pptx": pptx2text,
             ".docx": docx2text,
+            ".xlsx": xlsx2text,
         }
         self._logger = logging.getLogger(f"watchdog({str(path).replace('.', '_')})")
         handler = logging.StreamHandler(sys.stdout)
